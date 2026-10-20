@@ -5,7 +5,9 @@ import com.example.products.dto.ProductResponse;
 import com.example.products.model.Product;
 import com.example.products.service.ProductService;
 
+
 import jakarta.validation.Valid;
+
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -23,24 +26,22 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PutMapping;
 
 
-
-
-
-
 @RestController
 @RequestMapping("/products")
 public class ProductController {
 
+
     private final ProductService service;
+
 
     public ProductController(ProductService service){
         this.service = service;
     }
 
+
     @GetMapping ()
     public ResponseEntity<List<ProductResponse>> findAll() {
         List<ProductResponse> lista = new ArrayList<>();
-
         for(Product elem: service.findAll()){
             lista.add(toResponse(elem));
         }
@@ -52,20 +53,24 @@ public class ProductController {
         if (product.isEmpty()) {
             ResponseEntity.notFound().build();
         }
-        
         return ResponseEntity.ok(toResponse(product.get()));
     }
+
     @PostMapping
-    public ResponseEntity<ProductResponse> save(@Valid @RequestBody Product product) {
-        Product newProduct =service.save(product);
+    public ResponseEntity<ProductResponse> save(@Valid @RequestBody ProductRequest product) {
+
+
+        Product newProduct =service.save(toEntity(product),product.categoryId());
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(newProduct));
     }
 
-    
-
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> update(@PathVariable Long id,@Valid @RequestBody ProductRequest productUpdated) {
-        Optional<Product> product1 =service.update(id,toEntity( productUpdated));
+        Optional<Product> product1 =service.update(
+                id,
+                toEntity( productUpdated),
+                productUpdated.categoryId()
+        );
         if (product1.isPresent()) {
             return  ResponseEntity.ok(toResponse(product1.get()));
         }
@@ -80,9 +85,11 @@ public class ProductController {
         return ResponseEntity.noContent().build();
     }
 
+
     private ProductResponse toResponse(Product product){
-        return new ProductResponse(product.getId(),product.getName(),product.getPrice(),product.getStock());
+        return new ProductResponse(product.getId(),product.getName(),product.getPrice(),product.getStock(),0L,"");
     }
+
 
     private Product toEntity(ProductRequest product){
         Product productEntity = new Product();
