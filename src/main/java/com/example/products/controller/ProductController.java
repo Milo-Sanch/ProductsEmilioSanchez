@@ -1,7 +1,10 @@
 package com.example.products.controller;
 
+import com.example.products.dto.PercentajeRequest;
 import com.example.products.dto.ProductRequest;
 import com.example.products.dto.ProductResponse;
+import com.example.products.exception.ResourceConflict;
+import com.example.products.exception.ResourceNotFoundException;
 import com.example.products.model.Product;
 import com.example.products.service.ProductService;
 
@@ -11,19 +14,11 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.PutMapping;
 
 
 @RestController
@@ -49,11 +44,12 @@ public class ProductController {
     }
     @GetMapping("/{id}")
     public ResponseEntity<ProductResponse> findById(@PathVariable Long id) {
-        Optional<Product> product =service.findById(id);
-        if (product.isEmpty()) {
-            ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(toResponse(product.get()));
+        Product product =service.findById(id).orElseThrow(
+                ()->
+                        new ResourceNotFoundException("Producto no encontrado" + id)
+        );
+
+        return ResponseEntity.ok(toResponse(product));
     }
 
     @PostMapping
@@ -66,23 +62,42 @@ public class ProductController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ProductResponse> update(@PathVariable Long id,@Valid @RequestBody ProductRequest productUpdated) {
-        Optional<Product> product1 =service.update(
+        Product product1 =service.update(
                 id,
                 toEntity( productUpdated),
                 productUpdated.categoryId()
         );
-        if (product1.isPresent()) {
-            return  ResponseEntity.ok(toResponse(product1.get()));
-        }
-        return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(toResponse(product1));
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id){
-        boolean deleted =service.delete(id);
+        boolean deleted = service.delete(id);
         if (!deleted) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}")
+    public  ResponseEntity<ProductResponse> updatePrice (@PathVariable Long id, @Valid @RequestBody PercentajeRequest percentajeRequest) {
+        Product product =service.findById(id).orElseThrow(
+                ()->
+                        new ResourceNotFoundException("Producto no encontrado" + id)
+        );
+
+        double percentaje = percentajeRequest.getPercentaje();
+
+        if (product.getStock() == 0) {
+            throw new ResourceConflict("No se permite un descuento si el stock esta en 0");
+        }
+
+        double cantidadDescontada  = product.getPrice() * ( 1 - (percentaje / 100));
+        double precioDescontado = product.getPrice() - cantidadDescontada;
+        product.setPrice(precioDescontado);
+
+        service.update(id,product,product.getCategory().getCategoryId());
+
+        return ResponseEntity.ok(toResponse(product));
     }
 
 

@@ -46,7 +46,7 @@ public class ProductService {
         return repo.save(product);
     }
 
-    public Optional<Product> update(Long id,Product newproduct,Long categoryId){
+    public Product update(Long id,Product newproduct,Long categoryId){
 
         Product productBd=repo.findById(id).orElseThrow(
                 ()->
@@ -54,7 +54,6 @@ public class ProductService {
                                 "with id"+ id)
         );
 
-        //ehh
         Category category2= repoCategory.findById(categoryId).orElseThrow(
                 ()->
                         new ResourceNotFoundException("Category not found whit id" +
@@ -68,7 +67,7 @@ public class ProductService {
         productBd.setStock(newproduct.getStock());
         productBd.setCategory(category2);
 
-        return Optional.of(repo.save(productBd));
+        return repo.save(productBd);
     }
     public boolean delete(Long id){
         if (!repo.existsById(id)) {
